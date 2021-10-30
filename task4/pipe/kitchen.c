@@ -9,19 +9,17 @@
 #define MAXTYPES 128
 #define MAXTYPELEN 64
 
-//some considerations are said thinking of big numbers
-//of types & and objects of each type
-
-
 struct pair{
 	int time;
 	char type[MAXTYPELEN];
 };
 
-
+//to store time-costs
 //would be beter to implement hash_map to have O(1)
-//for operation of getting execuction time 
-//for eac dish type
+//for operation of getting time by typename
+//consideration is said thinking of big numbers
+//of types & objects of each type
+
 
 
 //func to get time-cost for operation of each type
@@ -77,22 +75,10 @@ key_t create_key(const char* filename){
 
 int main(){
 	const char* file_fkey = "configfile";
-	const char* file_crsp = "wash_info.in";
 	const char* stop_signal = "exit"; //should set it for the ENV
-;
+
 	int TABLE_LIMIT = 16; //set_table(); 
-	struct pair corresp[MAXTYPES];
-	int num_types = form_corresp(corresp, file_crsp);
-	if(num_types < 0){
-		perror("file with correspondance");
-		return -2;
-	}
-
-
-	for(int i = 0; i < num_types; ++i){
-		printf("%d  %s -> %d quants\n", i, corresp[i].type, corresp[i].time);
-	}
-
+	
 
 	//for bidirectional connection system of 2 pipes
 	int notify[2];
@@ -101,7 +87,6 @@ int main(){
 		perror("pipe");
 		return -1;
 	}
-	
 	
 	
 	//the system implementation:
@@ -115,78 +100,113 @@ int main(){
 		//DRY process
 		//consider dry.exe call 
 		
-		close(notify[0])  //don't read from notify
-		close(table[1])	  //don't write to table
+		const char* file_crsp = "dry_info.in";
 		
-		
-		
-		/*sleep(10);
-		close(fd[1]);
-		int str_size;
-		read(fd[0],  &str_size, sizeof(int));
-		char str[200];
-		read(fd[0], str, sizeof(char) * str_size);
-		pid_t p = getpid();
-		printf("Got string FST  (Cur pid == %d): %s", p, str);
-		fflush(stdout);
-		//close(fd[0])
+		struct pair corresp[MAXTYPES];
+		int num_types = form_corresp(corresp, file_crsp);
+		if(num_types < 0){
+			perror("dry: file with correspondance");
+			return -2;
+		}
 
-		sleep(5);
+		close(notify[0]);  //don't read from notify
+		close(table[1]);  //don't write to table
+		while(1){
+			
+			int str_size;
+			int SZint, SZstr;
+			if((SZint = read(table[0],  &str_size, sizeof(int))) < 0){
+				perror("reading from pipe");
+				return -3;
+			}
+			char dish[MAXTYPELEN];
+			if((SZstr = read(table[0], dish, sizeof(char) * str_size)) < 0){
+				perror("reading from pipe");
+				return -3;
+			}
+			
+			printf("SIZEZ I GOT: >%d-int = '%d<, >%d-str = '%s<\n", SZint, str_size, SZstr, dish);
+			
+			if(strcmp(dish, stop_signal) == 0){
+				printf("DRYING DONE\n");
+				return 0;
+			}
+			
+			printf("Got dish: >%s<\n", dish);
+			fflush(stdout);
+			sleep(10);
+			printf("dried");
+			fflush(stdout);
+			
+			
+			
+			/*
+			int delay = get_time(corresp, num_types, arg);
+			if(delay < 0){
+				perror("negative delay time");
+				return -6;
+			}	
+			
+			sleep(delay)
+			*/
+			
+			//write to notify
+		
+		}
+			
+		
 
-		//open(fd[0]);
-		close(fd[1]);
-		//int str_size;
-		read(fd[0],  &str_size, sizeof(int));
-		//char str[200];
-		read(fd[0], str, sizeof(char) * str_size);
-		p = getpid();
-		printf("Got string SCND (Cur pid == %d): %s", p, str);
-		*/
 	}else if(p == 0){
 		//WASH Process
 		// consider wash.exe call
-		
-		
-		
-		
-		
-		
-		
-		
+
+
 		/*
-		close(fd[0]);
-		char str[200];
-		pid_t p = getpid();
-		printf("Iput your string (Cur pid == %d):\n", p);
-		if(fgets(str, 200, stdin) < 0){
-			perror("read from file.in");
-			return -3;
-		}
+		const char* file_crsp = "wash_info.in";
 
-		int str_size = strlen(str);
-		str[str_size - 1] = '\0';
-		write(fd[1],  &str_size, sizeof(int));
-		if(write(fd[1], str, sizeof(char) * (strlen(str) + 1)) < 0){
-			perror("write to pipe");
-			return -4;
+		struct pair corresp[MAXTYPES];
+		int num_types = form_corresp(corresp, file_crsp);
+		if(num_types < 0){
+			perror("wash: file with correspondance");
+			return -2;
 		}
-
-		printf("Iput your string (Cur pid == %d):\n", p);
-		if(fgets(str, 200, stdin) < 0){
-			perror("read from file.in");
-			return -3;
-		}
-		//
-		str_size = strlen(str);
-		str[str_size - 1] = '\0';
-		write(fd[1],  &str_size, sizeof(int));
-		if(write(fd[1], str, sizeof(char) * (strlen(str) + 1)) < 0){
-			perror("write to pipe");
-			return -4;
-		}
-		close(fd[1]);
-		printf("Sent SCND\n");
 		*/
+		close(notify[1]); //we don't write to notify
+		close(table[0]); //we don't read from table
+		
+		int FREE_SPACE = TABLE_LIMIT;
+		
+		while(1){
+			/*if(FREE_SPACE == 0){
+				if(read(table[0], dish, sizeof(char) * str_size) < 0){
+					perror("reading from pipe");
+					return -3;
+				}		
+				sleep(1);
+				continue;
+			}*/
+			
+			//if(scanf() == EOF) break;
+			
+			char dish[MAXTYPELEN];
+			printf("Iput your string (Cur pid == %d):\n", p);
+			if(fgets(dish, MAXTYPELEN, stdin) < 0){
+				perror("read from file.in");
+				return -3;
+			}
+			if(strcmp(dish, stop_signal) == 0){
+				printf("DONE WASHIG\n");
+				return 0;
+			}
+			
+			int str_size = strlen(dish);
+			dish[str_size - 1] = '\0';
+			if(write(table[1],  &str_size, sizeof(int)) < 0 || write(table[1], dish, sizeof(char) * (str_size + 1)) < 0){
+				perror("write to pipe");
+				return -4;
+			}
+			
+		}
 	}else{
 		perror("fork");
 		return -2;
