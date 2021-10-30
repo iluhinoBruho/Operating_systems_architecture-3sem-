@@ -35,14 +35,11 @@ int get_time(const struct pair* corresp, int sz, char* arg){
 //func to form the data for time-cost of operations
 int form_corresp(struct pair* corresp, const char* file_name){
 	FILE* in = fopen(file_name, "r");
-
-	printf("5\n");
 	if(in == NULL)
 		return -1;
 	int t, size = 0;
-	while(fscanf(in, "%s : %d", corresp[size].type, &t) != EOF){
+	while(fscanf(in, "%s : %d", corresp[size].type, &corresp[size].time) != EOF){
 		++size;
-		printf("%d <- size\n", size);
 		if(size > MAXTYPES){
 			perror("too many types");
 			return -1;
@@ -94,13 +91,13 @@ int main(){
 		
 		const char* file_crsp = "dry_info.in";
 		
-		/*
+		
 		struct pair corresp[MAXTYPES];
 		int num_types = form_corresp(corresp, file_crsp);
 		if(num_types < 0){
 			perror("dry: file with correspondance");
 			return -2;
-		}*/
+		}
 
 		sleep(10);
 		while(1){
@@ -116,6 +113,11 @@ int main(){
 				perror("reading from pipe");
 				return -6;
 			}
+			dish[str_size] = '\0';
+			if(strlen(dish) < 2){
+				sleep(1);
+				continue;
+			}
 			if(strcmp(dish, stop_signal) == 0){
 				printf("DRYING DONE\n");
 				return 0;
@@ -123,14 +125,13 @@ int main(){
 			
 			printf("Drying dish: >%s<\n\n", dish);
 			fflush(stdout);
-			//delay = get_time(corresp, num_types, dish);
-			//if(delay < 0){
-			//	perror("negative delay time");
-			//	return -6;
-			//}	
-			//sleep(delay);
+			int delay = get_time(corresp, num_types, dish);
+			if(delay < 0){
+				perror("negative delay time");
+				return -6;
+			}	
+			sleep(delay);
 
-			sleep(5);
 			printf("Dried\n");
 			int notification = 1;
 			write(notify[1], &notification, sizeof(int));
@@ -141,7 +142,7 @@ int main(){
 		//WASH Process
 		// consider wash.exe call
 		
-		/*
+		
 		const char* file_crsp = "wash_info.in";
 
 		struct pair corresp[MAXTYPES];
@@ -150,36 +151,13 @@ int main(){
 			perror("wash: file with correspondance");
 			return -2;
 		}
-		*/
 		
-		FILE* data = fopen("dishes.in", r);
 		
-		int free_space = 5; //TABLE_LIMIT;
-		while(1)
-		{
-			close(table[0]); //we don't read from table
-			close(notify[1]); //we don't write to notify
-			char dish[MAXTYPELEN];
-			printf("Input your dish: \n");
-			if(fgets(dish, MAXTYPELEN, stdin) < 0){
-				perror("read from file.in");
-				return -3;
-			}
-			
-			if(strcmp(dish, stop_signal) == 0){
-				//also write to table about it
-				printf("DONE WASHIG\n");
-				return 0;
-			}
-			
-			int str_size = strlen(str);
-			str[str_size - 1] = '\0';
-			write(table[1],  &str_size, sizeof(int));
-			if(write(table[1], str, sizeof(char) * (strlen(str) + 1)) < 0){
-				perror("write to pipe");
-				return -4;
-			}
-			free_space--;
+		FILE* data = fopen("dishes.in", "r");
+		
+		int free_space = TABLE_LIMIT;
+		printf("wash proc started\n\n");
+		while(1){
 			printf("FREESPACE: %d\n\n", free_space);
 			if(free_space == 0){
 				printf("ZEROSPACE\n");
@@ -187,8 +165,58 @@ int main(){
 				int ready = read(notify[0], &sign_ready, sizeof(int));
 				if(ready > 0 && sign_ready == 1)
 					free_space++;
-				printf("ZEROPACE: %d<space %d<sign %d<ready\n\n", free_space, sign_ready, ready);
 			}
+			if(free_space == 0){
+				sleep(1);
+				continue;
+			}
+			
+			close(table[0]); //we don't read from table
+			close(notify[1]); //we don't write to notify
+			char dish[MAXTYPELEN];
+			int count = 0;
+			if(fscanf(data, "%s : %d", dish, &count) == EOF){
+				int str_size = strlen(stop_signal);
+				if(write(table[1],  &str_size, sizeof(int)) < 0){
+					perror("write to pipe");
+					return -4;
+				}
+				if(write(table[1], stop_signal, sizeof(char) * (str_size )) < 0){
+					perror("write to pipe");
+					return -4;
+				}
+				printf("DONE WASHIG\n");
+				break; //return 0;
+			}
+
+			for(int i = 0; i < count; ++i){
+				printf("Dish %s is in queue\n", dish);
+				int delay = get_time(corresp, num_types, dish);
+				if(delay < 0){
+					perror("negative delay time");
+					return -6;
+				}	
+				sleep(delay);
+				
+				while(free_space == 0){
+					int sign_ready;
+					int ready = read(notify[0], &sign_ready, sizeof(int));
+					if(ready > 0 && sign_ready == 1)
+						free_space++;
+					if(free_space == 0)
+						sleep(1);
+						
+				}
+				
+				int str_size = strlen(dish);
+				write(table[1],  &str_size, sizeof(int));
+				if(write(table[1], dish, sizeof(char) * (str_size)) < 0){
+				perror("write to pipe");
+				return -4;
+				}
+				free_space--;
+			}
+			
 		}	
 
 	}else{
