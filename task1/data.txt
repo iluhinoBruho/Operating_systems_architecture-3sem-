@@ -1,0 +1,7 @@
+0 cat data.txt
+3 ./proc1.exe
+2 ./proc2.exe
+15 ./proc2.exe 
+5 ls
+7 ps
+13 ps -l
