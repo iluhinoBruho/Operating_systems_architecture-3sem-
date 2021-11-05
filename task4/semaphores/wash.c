@@ -64,7 +64,7 @@ int main(){
 	const char* file_fkey = "createfile";
 	const char* file_crsp = "wash_info.in";
 	const char* stop_signal = "exit"; //should set it for the ENV
-	int TABLE_LIMIT = set_table();
+	int TABLE_LIMIT = 16; //set_table();
 
 	struct pair corresp[MAXTYPES]; 
 	int num_types = form_corresp(corresp, file_crsp);

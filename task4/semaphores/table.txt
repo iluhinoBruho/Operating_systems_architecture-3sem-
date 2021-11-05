@@ -1,0 +1,10 @@
+spoon
+spoon
+fork
+knife
+fork
+fork
+cup
+cup
+plate
+exit
